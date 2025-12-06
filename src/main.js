@@ -16,6 +16,10 @@ import {
   WebGLRenderer,
 } from 'https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js';
 
+import { TimelineDriver, TIMELINE_DURATION_MS } from './timeline.js';
+import { CameraRig } from './cameraRig.js';
+import { Asteroid } from './asteroid.js';
+
 const app = document.getElementById('app');
 
 const renderer = new WebGLRenderer({ antialias: true });
@@ -69,36 +73,11 @@ function buildStars(count = 450) {
 
 buildStars();
 
-class TimelineDriver {
-  constructor(durationMs) {
-    this.duration = durationMs;
-    this.playing = false;
-    this.t = 0;
-    this._startTime = null;
-  }
-
-  restart(startTimeMs) {
-    this.playing = true;
-    this._startTime = startTimeMs ?? performance.now();
-    this.t = 0;
-  }
-
-  stop() {
-    this.playing = false;
-    this._startTime = null;
-    this.t = 0;
-  }
-
-  update(nowMs) {
-    if (!this.playing || this._startTime === null) return this.t;
-    const elapsed = nowMs - this._startTime;
-    const looped = elapsed % this.duration;
-    this.t = Math.min(1, looped / this.duration);
-    return this.t;
-  }
-}
-
-const timeline = new TimelineDriver(12000);
+// Initialize cinematic systems
+const timeline = new TimelineDriver(TIMELINE_DURATION_MS);
+const cameraRig = new CameraRig(camera);
+const asteroid = new Asteroid();
+asteroid.addToScene(scene);
 
 const overlay = document.createElement('div');
 overlay.className = 'ui-overlay';
@@ -128,7 +107,10 @@ playButton.addEventListener('click', () => {
     timeline.stop();
     status.textContent = 'Timeline stopped';
   } else {
+    // Reset all systems for deterministic replay
     timeline.restart(performance.now());
+    asteroid.reset();
+    cameraRig.reset();
     status.textContent = 'Timeline playing…';
   }
 });
@@ -145,16 +127,29 @@ window.addEventListener('resize', () => {
   camera.updateProjectionMatrix();
 });
 
-const tmp = new Vector3();
+// Animation loop
+let lastTime = performance.now();
 
 function animate(now) {
-  const normalizedT = timeline.update(now ?? performance.now());
-  const wobble = Math.sin(normalizedT * Math.PI * 2) * 0.4;
-  camera.position.lerp(tmp.set(0, 6 + wobble, 16 - wobble * 2), 0.05);
-  camera.lookAt(0, 0, 0);
+  now = now ?? performance.now();
+  const deltaTime = (now - lastTime) / 1000; // Convert to seconds
+  lastTime = now;
 
-  status.textContent = `${timeline.playing ? 'Playing' : 'Idle'} — T: ${normalizedT.toFixed(3)}`;
+  // Update timeline
+  timeline.update(now);
 
+  // Update asteroid motion
+  asteroid.update(timeline, deltaTime);
+
+  // Update camera rig (tracking asteroid)
+  cameraRig.update(timeline, asteroid.getPosition());
+
+  // Update status display
+  const phase = timeline.getCurrentPhase();
+  const shakePercent = (cameraRig.shakeIntensity * 100).toFixed(0);
+  status.textContent = `${timeline.playing ? '▶' : '⏸'} ${phase.name} | T: ${timeline.t.toFixed(3)} | Shake: ${shakePercent}%`;
+
+  // Render
   renderer.render(scene, camera);
   requestAnimationFrame(animate);
 }
