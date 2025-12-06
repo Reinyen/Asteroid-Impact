@@ -6,7 +6,6 @@
 import {
   Mesh,
   SphereGeometry,
-  IcosahedronGeometry,
   MeshStandardMaterial,
   Vector3,
   Color,
@@ -24,7 +23,7 @@ function createAsteroidGeometry(lodLevel = 'mid', quality = 'High') {
   if (lodLevel === 'far') {
     // Far LOD: Simple impostor/low poly for distant view
     const segments = quality === 'High' ? 8 : 6;
-    geometry = new IcosahedronGeometry(baseRadius, 0); // Icosahedron for angular look
+    geometry = new SphereGeometry(baseRadius, segments, segments);
     noiseIntensity = 0.15;
   } else if (lodLevel === 'mid') {
     // Mid LOD: Medium detail with normal variation
@@ -162,31 +161,38 @@ export class Asteroid {
   }
 
   initializeLODs() {
-    // Create geometries for each LOD level
-    const farGeo = createAsteroidGeometry('far', this.quality);
-    const midGeo = createAsteroidGeometry('mid', this.quality);
-    const nearGeo = createAsteroidGeometry('near', this.quality);
+    try {
+      // Create geometries for each LOD level
+      const farGeo = createAsteroidGeometry('far', this.quality);
+      const midGeo = createAsteroidGeometry('mid', this.quality);
+      const nearGeo = createAsteroidGeometry('near', this.quality);
 
-    // Create materials (will be updated each frame)
-    const farMat = createAsteroidMaterial(0);
-    const midMat = createAsteroidMaterial(0);
-    const nearMat = createAsteroidMaterial(0);
+      // Create materials (will be updated each frame)
+      const farMat = createAsteroidMaterial(0);
+      const midMat = createAsteroidMaterial(0);
+      const nearMat = createAsteroidMaterial(0);
 
-    // Create meshes
-    this.lodMeshes.far = new Mesh(farGeo, farMat);
-    this.lodMeshes.mid = new Mesh(midGeo, midMat);
-    this.lodMeshes.near = new Mesh(nearGeo, nearMat);
+      // Create meshes
+      this.lodMeshes.far = new Mesh(farGeo, farMat);
+      this.lodMeshes.mid = new Mesh(midGeo, midMat);
+      this.lodMeshes.near = new Mesh(nearGeo, nearMat);
 
-    // Configure shadow casting
-    Object.values(this.lodMeshes).forEach(mesh => {
-      mesh.castShadow = true;
-      mesh.receiveShadow = false;
-      mesh.visible = false; // Start hidden
-    });
+      // Configure shadow casting
+      Object.values(this.lodMeshes).forEach(mesh => {
+        mesh.castShadow = true;
+        mesh.receiveShadow = false;
+        mesh.visible = false; // Start hidden
+      });
 
-    // Set initial active mesh
-    this.activeMesh = this.lodMeshes.mid;
-    this.activeMesh.visible = true;
+      // Set initial active mesh
+      this.activeMesh = this.lodMeshes.mid;
+      this.activeMesh.visible = true;
+
+      console.log('Asteroid LODs initialized successfully');
+    } catch (error) {
+      console.error('Error initializing asteroid LODs:', error);
+      throw error;
+    }
   }
 
   /**
