@@ -91,10 +91,18 @@ buildStars();
 let quality = 'High';
 
 // Initialize cinematic systems
+console.log('Initializing cinematic systems...');
 const timeline = new TimelineDriver(TIMELINE_DURATION_MS);
 const cameraRig = new CameraRig(camera);
+
+console.log('Creating asteroid with quality:', quality);
 const asteroid = new Asteroid(quality);
 asteroid.addToScene(scene);
+console.log('Asteroid added to scene');
+
+// Auto-start the timeline on load for immediate visual feedback
+timeline.restart(performance.now());
+console.log('Timeline started, playing:', timeline.playing);
 
 const overlay = document.createElement('div');
 overlay.className = 'ui-overlay';
