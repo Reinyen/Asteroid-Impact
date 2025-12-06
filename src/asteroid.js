@@ -1,23 +1,46 @@
 /**
  * Asteroid module - handles asteroid geometry, motion, and visual effects
+ * Enhanced with LOD system and heating/ablation effects
  */
 
 import {
   Mesh,
   SphereGeometry,
+  IcosahedronGeometry,
   MeshStandardMaterial,
   Vector3,
+  Color,
 } from 'https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js';
 import { T_IMPACT, IMPACT_POINT, ease } from './timeline.js';
 
 /**
- * Create procedural asteroid geometry
+ * Create procedural asteroid geometry with varying LOD levels
  */
-function createAsteroidGeometry(baseRadius = 1.2) {
-  // Use sphere as placeholder - can add noise later
-  const geometry = new SphereGeometry(baseRadius, 16, 16);
+function createAsteroidGeometry(lodLevel = 'mid', quality = 'High') {
+  let geometry;
+  let baseRadius = 1.2;
+  let noiseIntensity = 0.2;
 
-  // Add some irregularity to vertices for rocky appearance
+  if (lodLevel === 'far') {
+    // Far LOD: Simple impostor/low poly for distant view
+    const segments = quality === 'High' ? 8 : 6;
+    geometry = new IcosahedronGeometry(baseRadius, 0); // Icosahedron for angular look
+    noiseIntensity = 0.15;
+  } else if (lodLevel === 'mid') {
+    // Mid LOD: Medium detail with normal variation
+    const widthSegments = quality === 'High' ? 24 : 16;
+    const heightSegments = quality === 'High' ? 24 : 16;
+    geometry = new SphereGeometry(baseRadius, widthSegments, heightSegments);
+    noiseIntensity = 0.22;
+  } else if (lodLevel === 'near') {
+    // Near LOD: Highest detail with procedural variation
+    const widthSegments = quality === 'High' ? 40 : 28;
+    const heightSegments = quality === 'High' ? 40 : 28;
+    geometry = new SphereGeometry(baseRadius, widthSegments, heightSegments);
+    noiseIntensity = 0.28;
+  }
+
+  // Add procedural irregularity to vertices for rocky appearance
   const positions = geometry.attributes.position;
   for (let i = 0; i < positions.count; i++) {
     const vertex = new Vector3(
@@ -26,13 +49,22 @@ function createAsteroidGeometry(baseRadius = 1.2) {
       positions.getZ(i)
     );
 
-    // Add deterministic noise based on vertex position
-    const noise =
+    // Multi-octave noise for more natural appearance
+    const noise1 =
       Math.sin(vertex.x * 3.7 + vertex.y * 2.3) *
-      Math.cos(vertex.z * 4.1 + vertex.y * 1.9) *
-      0.2;
+      Math.cos(vertex.z * 4.1 + vertex.y * 1.9);
 
-    vertex.multiplyScalar(1 + noise);
+    const noise2 =
+      Math.sin(vertex.x * 7.3 + vertex.z * 5.1) *
+      Math.cos(vertex.y * 6.7 + vertex.x * 4.9) * 0.5;
+
+    const noise3 =
+      Math.sin(vertex.z * 11.3 + vertex.y * 9.7) *
+      Math.cos(vertex.x * 8.9 + vertex.z * 7.3) * 0.25;
+
+    const combinedNoise = (noise1 + noise2 + noise3) * noiseIntensity;
+
+    vertex.multiplyScalar(1 + combinedNoise);
     positions.setXYZ(i, vertex.x, vertex.y, vertex.z);
   }
 
@@ -41,21 +73,65 @@ function createAsteroidGeometry(baseRadius = 1.2) {
 }
 
 /**
- * Asteroid class - manages single asteroid instance
+ * Create material for asteroid with heating effects
+ */
+function createAsteroidMaterial(heatingIntensity = 0) {
+  // Base color: dark rocky gray
+  const baseColor = new Color(0x4a4a52);
+
+  // Heating color progression: gray -> dark red -> orange -> yellow-white
+  const heatingColor = new Color();
+  if (heatingIntensity < 0.3) {
+    // No visible heating
+    heatingColor.setRGB(0, 0, 0);
+  } else if (heatingIntensity < 0.5) {
+    // Start to glow dark red
+    const t = (heatingIntensity - 0.3) / 0.2;
+    heatingColor.setRGB(0.3 * t, 0, 0);
+  } else if (heatingIntensity < 0.75) {
+    // Red to orange
+    const t = (heatingIntensity - 0.5) / 0.25;
+    heatingColor.setRGB(0.3 + 0.5 * t, 0.15 * t, 0);
+  } else {
+    // Orange to yellow-white (intense heating)
+    const t = (heatingIntensity - 0.75) / 0.25;
+    heatingColor.setRGB(0.8 + 0.2 * t, 0.15 + 0.45 * t, 0.05 * t);
+  }
+
+  // Emissive intensity increases dramatically near impact
+  const emissiveIntensity = Math.pow(heatingIntensity, 2) * 3.5;
+
+  const material = new MeshStandardMaterial({
+    color: baseColor,
+    roughness: 0.9 - heatingIntensity * 0.3, // Smoother when hot
+    metalness: 0.1 + heatingIntensity * 0.15, // Slight metallic sheen when hot
+    emissive: heatingColor,
+    emissiveIntensity: emissiveIntensity,
+  });
+
+  return material;
+}
+
+/**
+ * Asteroid class - manages single asteroid instance with LOD and heating
  */
 export class Asteroid {
-  constructor() {
-    // Create mesh
-    const geometry = createAsteroidGeometry(1.2);
-    const material = new MeshStandardMaterial({
-      color: 0x4a4a52,
-      roughness: 0.9,
-      metalness: 0.1,
-    });
+  constructor(quality = 'High') {
+    this.quality = quality;
 
-    this.mesh = new Mesh(geometry, material);
-    this.mesh.castShadow = true;
-    this.mesh.receiveShadow = false;
+    // Create LOD meshes
+    this.lodMeshes = {
+      far: null,
+      mid: null,
+      near: null,
+    };
+
+    this.currentLOD = 'mid';
+    this.activeMesh = null;
+    this.heatingIntensity = 0;
+
+    // Initialize all LOD levels
+    this.initializeLODs();
 
     // Motion configuration
     this.startPosition = new Vector3(12, 45, -80);
@@ -69,6 +145,14 @@ export class Asteroid {
     // Rotation speed (for visual interest)
     this.rotationSpeed = new Vector3(0.3, 0.7, 0.4);
 
+    // Turbulence for breakup effect
+    this.turbulenceOffset = new Vector3();
+    this.turbulenceSpeed = new Vector3(
+      Math.random() * 0.5,
+      Math.random() * 0.5,
+      Math.random() * 0.5
+    );
+
     // Temporary vectors
     this._currentPos = new Vector3();
     this._temp = new Vector3();
@@ -77,10 +161,169 @@ export class Asteroid {
     this.reset();
   }
 
+  initializeLODs() {
+    // Create geometries for each LOD level
+    const farGeo = createAsteroidGeometry('far', this.quality);
+    const midGeo = createAsteroidGeometry('mid', this.quality);
+    const nearGeo = createAsteroidGeometry('near', this.quality);
+
+    // Create materials (will be updated each frame)
+    const farMat = createAsteroidMaterial(0);
+    const midMat = createAsteroidMaterial(0);
+    const nearMat = createAsteroidMaterial(0);
+
+    // Create meshes
+    this.lodMeshes.far = new Mesh(farGeo, farMat);
+    this.lodMeshes.mid = new Mesh(midGeo, midMat);
+    this.lodMeshes.near = new Mesh(nearGeo, nearMat);
+
+    // Configure shadow casting
+    Object.values(this.lodMeshes).forEach(mesh => {
+      mesh.castShadow = true;
+      mesh.receiveShadow = false;
+      mesh.visible = false; // Start hidden
+    });
+
+    // Set initial active mesh
+    this.activeMesh = this.lodMeshes.mid;
+    this.activeMesh.visible = true;
+  }
+
+  /**
+   * Update quality setting and recreate LODs if needed
+   */
+  setQuality(quality) {
+    if (this.quality === quality) return;
+
+    this.quality = quality;
+
+    // Store current state
+    const position = this.activeMesh.position.clone();
+    const scale = this.activeMesh.scale.clone();
+    const rotation = this.activeMesh.rotation.clone();
+
+    // Dispose old geometries
+    Object.values(this.lodMeshes).forEach(mesh => {
+      mesh.geometry.dispose();
+      mesh.material.dispose();
+    });
+
+    // Recreate LODs
+    this.initializeLODs();
+
+    // Restore state
+    this.activeMesh.position.copy(position);
+    this.activeMesh.scale.copy(scale);
+    this.activeMesh.rotation.copy(rotation);
+  }
+
+  /**
+   * Switch to appropriate LOD level based on timeline phase
+   */
+  updateLOD(timeline) {
+    const phase = timeline.getCurrentPhase();
+    let desiredLOD = 'mid';
+
+    if (phase.key === 'FAR_APPROACH') {
+      desiredLOD = 'far';
+    } else if (phase.key === 'MID_APPROACH') {
+      desiredLOD = 'mid';
+    } else if (phase.key === 'NEAR_RUSH' || phase.key === 'IMPACT' || phase.key === 'AFTERMATH') {
+      desiredLOD = 'near';
+    }
+
+    if (desiredLOD !== this.currentLOD) {
+      // Switch LOD
+      const oldMesh = this.activeMesh;
+      this.activeMesh = this.lodMeshes[desiredLOD];
+
+      // Copy transform from old mesh
+      this.activeMesh.position.copy(oldMesh.position);
+      this.activeMesh.scale.copy(oldMesh.scale);
+      this.activeMesh.rotation.copy(oldMesh.rotation);
+
+      // Toggle visibility
+      oldMesh.visible = false;
+      this.activeMesh.visible = true;
+
+      this.currentLOD = desiredLOD;
+    }
+  }
+
+  /**
+   * Calculate heating intensity based on timeline
+   */
+  calculateHeating(timeline) {
+    const t = timeline.t;
+    const phase = timeline.getCurrentPhase();
+
+    if (phase.key === 'FAR_APPROACH') {
+      return 0; // No heating at far distance
+    } else if (phase.key === 'MID_APPROACH') {
+      // Start to heat up slightly
+      const progress = timeline.getPhaseProgress();
+      return ease.inQuad(progress) * 0.35;
+    } else if (phase.key === 'NEAR_RUSH') {
+      // Rapidly heat up
+      const progress = timeline.getPhaseProgress();
+      return 0.35 + ease.inQuart(progress) * 0.50;
+    } else if (phase.key === 'IMPACT') {
+      // Peak heating at impact
+      const progress = timeline.getPhaseProgress();
+      return 0.85 + ease.outQuad(progress) * 0.15;
+    } else if (phase.key === 'AFTERMATH') {
+      // Maintain intense heat then fade
+      const timeSince = timeline.getTimeSinceImpact();
+      if (timeSince < 0.05) {
+        return 1.0; // Peak glow
+      } else {
+        const fadeProgress = (timeSince - 0.05) / 0.1;
+        return Math.max(0, 1.0 - ease.outQuad(fadeProgress));
+      }
+    }
+
+    return 0;
+  }
+
+  /**
+   * Update material heating effect
+   */
+  updateMaterial(heatingIntensity) {
+    // Update all materials to keep them in sync
+    Object.values(this.lodMeshes).forEach(mesh => {
+      const material = mesh.material;
+
+      // Update heating color progression
+      if (heatingIntensity < 0.3) {
+        material.emissive.setRGB(0, 0, 0);
+        material.emissiveIntensity = 0;
+      } else if (heatingIntensity < 0.5) {
+        const t = (heatingIntensity - 0.3) / 0.2;
+        material.emissive.setRGB(0.3 * t, 0, 0);
+        material.emissiveIntensity = t * 0.5;
+      } else if (heatingIntensity < 0.75) {
+        const t = (heatingIntensity - 0.5) / 0.25;
+        material.emissive.setRGB(0.3 + 0.5 * t, 0.15 * t, 0);
+        material.emissiveIntensity = 0.5 + t * 1.5;
+      } else {
+        const t = (heatingIntensity - 0.75) / 0.25;
+        material.emissive.setRGB(0.8 + 0.2 * t, 0.15 + 0.45 * t, 0.05 * t);
+        material.emissiveIntensity = 2.0 + t * 1.5;
+      }
+
+      // Surface properties change with heating
+      material.roughness = 0.9 - heatingIntensity * 0.3;
+      material.metalness = 0.1 + heatingIntensity * 0.15;
+    });
+  }
+
   reset() {
-    this.mesh.position.copy(this.startPosition);
-    this.mesh.scale.setScalar(this.startScale);
-    this.mesh.rotation.set(0, 0, 0);
+    this.activeMesh.position.copy(this.startPosition);
+    this.activeMesh.scale.setScalar(this.startScale);
+    this.activeMesh.rotation.set(0, 0, 0);
+    this.turbulenceOffset.set(0, 0, 0);
+    this.heatingIntensity = 0;
+    this.updateMaterial(0);
   }
 
   /**
@@ -104,6 +347,14 @@ export class Asteroid {
       // Add slight arc trajectory (parabolic path)
       const arcHeight = Math.sin(progress * Math.PI) * 8;
       this._currentPos.y += arcHeight;
+
+      // Add turbulence effect during NEAR_RUSH
+      if (phase.key === 'NEAR_RUSH') {
+        const turbulenceIntensity = timeline.getPhaseProgress() * 0.3;
+        this._currentPos.x += Math.sin(t * 50 * this.turbulenceSpeed.x) * turbulenceIntensity;
+        this._currentPos.y += Math.sin(t * 45 * this.turbulenceSpeed.y) * turbulenceIntensity;
+        this._currentPos.z += Math.sin(t * 55 * this.turbulenceSpeed.z) * turbulenceIntensity * 0.5;
+      }
 
       return this._currentPos;
     } else {
@@ -163,28 +414,35 @@ export class Asteroid {
    * Update asteroid - call every frame
    */
   update(timeline, deltaTime) {
+    // Update LOD level
+    this.updateLOD(timeline);
+
+    // Update heating intensity
+    this.heatingIntensity = this.calculateHeating(timeline);
+    this.updateMaterial(this.heatingIntensity);
+
     // Update position
     const position = this.calculatePosition(timeline);
-    this.mesh.position.copy(position);
+    this.activeMesh.position.copy(position);
 
     // Update scale
     const scale = this.calculateScale(timeline);
-    this.mesh.scale.setScalar(scale);
+    this.activeMesh.scale.setScalar(scale);
 
     // Rotate for visual interest (deterministic based on timeline)
     if (timeline.t < T_IMPACT) {
-      this.mesh.rotation.x = timeline.t * this.rotationSpeed.x * Math.PI * 2;
-      this.mesh.rotation.y = timeline.t * this.rotationSpeed.y * Math.PI * 2;
-      this.mesh.rotation.z = timeline.t * this.rotationSpeed.z * Math.PI * 2;
+      this.activeMesh.rotation.x = timeline.t * this.rotationSpeed.x * Math.PI * 2;
+      this.activeMesh.rotation.y = timeline.t * this.rotationSpeed.y * Math.PI * 2;
+      this.activeMesh.rotation.z = timeline.t * this.rotationSpeed.z * Math.PI * 2;
     }
 
     // Visibility toggle (hide after aftermath)
-    this.mesh.visible = scale > 0.01;
+    this.activeMesh.visible = scale > 0.01;
 
     // Safety check
     if (
-      !isFinite(this.mesh.position.x) ||
-      !isFinite(this.mesh.scale.x)
+      !isFinite(this.activeMesh.position.x) ||
+      !isFinite(this.activeMesh.scale.x)
     ) {
       console.warn('Asteroid state became NaN, resetting');
       this.reset();
@@ -195,20 +453,35 @@ export class Asteroid {
    * Get current position (for camera tracking)
    */
   getPosition() {
-    return this.mesh.position;
+    return this.activeMesh.position;
   }
 
   /**
    * Add to scene
    */
   addToScene(scene) {
-    scene.add(this.mesh);
+    // Add all LOD meshes to scene
+    Object.values(this.lodMeshes).forEach(mesh => {
+      scene.add(mesh);
+    });
   }
 
   /**
    * Remove from scene
    */
   removeFromScene(scene) {
-    scene.remove(this.mesh);
+    Object.values(this.lodMeshes).forEach(mesh => {
+      scene.remove(mesh);
+    });
+  }
+
+  /**
+   * Dispose resources
+   */
+  dispose() {
+    Object.values(this.lodMeshes).forEach(mesh => {
+      mesh.geometry.dispose();
+      mesh.material.dispose();
+    });
   }
 }
