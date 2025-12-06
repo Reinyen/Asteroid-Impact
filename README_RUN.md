@@ -1,31 +1,40 @@
 # Run Instructions
 
-This project now serves as a static three.js page without external build tooling.
+This project is a baseline three.js web app with a night sky, ground, and simple timeline control.
 
 ## Setup
 
-1. Ensure the expected Node.js version is active (via `nvm`):
+1. Ensure Node.js is active (project uses v20.19.5):
    ```bash
    nvm use 20.19.5
    ```
 
-2. Install local metadata (no external packages are fetched, so this succeeds even when the sandbox blocks `registry.npmjs.org`):
+2. Install (no external packages required):
    ```bash
    npm install
    ```
 
-   > Note: Direct HTTPS requests to `https://registry.npmjs.org/` return `403 Forbidden` in this environment. Because the project has no external dependencies, `npm install` does not need to reach the registry and therefore completes successfully.
-
 ## Run
 
-Start the lightweight static server:
+Start the dev server:
 ```bash
 npm run dev
 ```
 
-Open the printed URL (default http://localhost:4173) to view the scene.
+Open the printed URL: **http://localhost:4173**
 
-## Controls
+## What to Expect
 
-- **Play / Restart** toggles the placeholder cinematic timeline. When starting, the normalized timeline time `T` runs from 0 → 1 over the fixed loop duration.
-- **Quality: High / Low** toggles a stub setting (no rendering differences yet).
+- **Scene**: Night sky with stars, dark ground plane, ambient lighting
+- **Controls**:
+  - **Play / Restart**: Starts timeline advancing from T=0 to T=1 over 12 seconds
+  - **Quality: High / Low**: Toggle button (stub, no rendering changes)
+- **Status Display**: Shows "Playing" or "Idle" and current T value (0.000 to 1.000)
+
+## Verification
+
+✓ Page loads with no console errors
+✓ Night sky and ground are visible
+✓ Clicking "Play / Restart" makes T advance from 0.000 → 1.000
+✓ Timeline loops automatically when playing
+✓ Clicking again stops the timeline

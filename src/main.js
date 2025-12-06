@@ -12,20 +12,18 @@ import {
   Points,
   PointsMaterial,
   Scene,
-  Vector3,
   WebGLRenderer,
 } from 'https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js';
 
-import { TimelineDriver, TIMELINE_DURATION_MS } from './timeline.js';
-import { CameraRig } from './cameraRig.js';
-import { Asteroid } from './asteroid.js';
+// ============================================================================
+// Setup
+// ============================================================================
 
 const app = document.getElementById('app');
 
 const renderer = new WebGLRenderer({ antialias: true });
 renderer.setSize(app.clientWidth, app.clientHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.shadowMap.enabled = true;
 app.appendChild(renderer.domElement);
 
 const scene = new Scene();
@@ -34,22 +32,37 @@ scene.fog = new FogExp2(0x04060f, 0.015);
 
 const camera = new PerspectiveCamera(60, app.clientWidth / app.clientHeight, 0.1, 2000);
 camera.position.set(0, 6, 16);
+camera.lookAt(0, 0, 0);
+
+// ============================================================================
+// Lighting
+// ============================================================================
 
 const ambient = new AmbientLight(0x8899aa, 0.6);
 scene.add(ambient);
 
 const moonLight = new DirectionalLight(0xbdd3ff, 1.1);
 moonLight.position.set(-8, 12, 6);
-moonLight.castShadow = true;
 scene.add(moonLight);
 
-const groundGeo = new PlaneGeometry(120, 120, 40, 40);
+// ============================================================================
+// Ground
+// ============================================================================
+
+const groundGeo = new PlaneGeometry(120, 120);
 groundGeo.rotateX(-Math.PI / 2);
 
-const groundMaterial = new MeshStandardMaterial({ color: 0x0b0d13, roughness: 0.9, metalness: 0.05 });
+const groundMaterial = new MeshStandardMaterial({
+  color: 0x0b0d13,
+  roughness: 0.9,
+  metalness: 0.05
+});
 const ground = new Mesh(groundGeo, groundMaterial);
-ground.receiveShadow = true;
 scene.add(ground);
+
+// ============================================================================
+// Night Sky (Stars)
+// ============================================================================
 
 function buildStars(count = 450) {
   const positions = [];
@@ -66,18 +79,55 @@ function buildStars(count = 450) {
   const geometry = new BufferGeometry();
   geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
 
-  const material = new PointsMaterial({ color: 0xcdd6f4, size: 1.2, sizeAttenuation: true });
+  const material = new PointsMaterial({
+    color: 0xcdd6f4,
+    size: 1.2,
+    sizeAttenuation: true
+  });
   const stars = new Points(geometry, material);
   scene.add(stars);
 }
 
 buildStars();
 
-// Initialize cinematic systems
-const timeline = new TimelineDriver(TIMELINE_DURATION_MS);
-const cameraRig = new CameraRig(camera);
-const asteroid = new Asteroid();
-asteroid.addToScene(scene);
+// ============================================================================
+// Timeline Driver (Stub)
+// ============================================================================
+
+class TimelineDriver {
+  constructor(durationMs) {
+    this.duration = durationMs;
+    this.playing = false;
+    this.t = 0;
+    this._startTime = null;
+  }
+
+  restart(startTimeMs) {
+    this.playing = true;
+    this._startTime = startTimeMs ?? performance.now();
+    this.t = 0;
+  }
+
+  stop() {
+    this.playing = false;
+    this._startTime = null;
+    this.t = 0;
+  }
+
+  update(nowMs) {
+    if (!this.playing || this._startTime === null) return this.t;
+    const elapsed = nowMs - this._startTime;
+    const looped = elapsed % this.duration;
+    this.t = Math.min(1, looped / this.duration);
+    return this.t;
+  }
+}
+
+const timeline = new TimelineDriver(12000);
+
+// ============================================================================
+// UI Overlay
+// ============================================================================
 
 const overlay = document.createElement('div');
 overlay.className = 'ui-overlay';
@@ -102,15 +152,16 @@ overlay.appendChild(status);
 
 app.appendChild(overlay);
 
+// ============================================================================
+// Event Handlers
+// ============================================================================
+
 playButton.addEventListener('click', () => {
   if (timeline.playing) {
     timeline.stop();
     status.textContent = 'Timeline stopped';
   } else {
-    // Reset all systems for deterministic replay
     timeline.restart(performance.now());
-    asteroid.reset();
-    cameraRig.reset();
     status.textContent = 'Timeline playing…';
   }
 });
@@ -118,6 +169,7 @@ playButton.addEventListener('click', () => {
 qualityButton.addEventListener('click', () => {
   quality = quality === 'High' ? 'Low' : 'High';
   qualityButton.textContent = `Quality: ${quality}`;
+  // Stub: No rendering changes implemented
 });
 
 window.addEventListener('resize', () => {
@@ -127,29 +179,20 @@ window.addEventListener('resize', () => {
   camera.updateProjectionMatrix();
 });
 
-// Animation loop
-let lastTime = performance.now();
+// ============================================================================
+// Animation Loop
+// ============================================================================
 
 function animate(now) {
   now = now ?? performance.now();
-  const deltaTime = (now - lastTime) / 1000; // Convert to seconds
-  lastTime = now;
 
   // Update timeline
   timeline.update(now);
 
-  // Update asteroid motion
-  asteroid.update(timeline, deltaTime);
-
-  // Update camera rig (tracking asteroid)
-  cameraRig.update(timeline, asteroid.getPosition());
-
   // Update status display
-  const phase = timeline.getCurrentPhase();
-  const shakePercent = (cameraRig.shakeIntensity * 100).toFixed(0);
-  status.textContent = `${timeline.playing ? '▶' : '⏸'} ${phase.name} | T: ${timeline.t.toFixed(3)} | Shake: ${shakePercent}%`;
+  status.textContent = `${timeline.playing ? 'Playing' : 'Idle'} — T: ${timeline.t.toFixed(3)}`;
 
-  // Render
+  // Render scene
   renderer.render(scene, camera);
   requestAnimationFrame(animate);
 }
