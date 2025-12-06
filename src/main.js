@@ -35,13 +35,27 @@ scene.fog = new FogExp2(0x04060f, 0.015);
 const camera = new PerspectiveCamera(60, app.clientWidth / app.clientHeight, 0.1, 2000);
 camera.position.set(0, 6, 16);
 
-const ambient = new AmbientLight(0x8899aa, 0.6);
+// Ambient light - reduced for night realism
+const ambient = new AmbientLight(0x8899aa, 0.4);
 scene.add(ambient);
 
-const moonLight = new DirectionalLight(0xbdd3ff, 1.1);
+// Primary moonlight - key light
+const moonLight = new DirectionalLight(0xbdd3ff, 1.4);
 moonLight.position.set(-8, 12, 6);
 moonLight.castShadow = true;
+moonLight.shadow.mapSize.width = 2048;
+moonLight.shadow.mapSize.height = 2048;
 scene.add(moonLight);
+
+// Rim light - helps asteroid read against dark sky
+const rimLight = new DirectionalLight(0x4466aa, 0.6);
+rimLight.position.set(10, 8, -12);
+rimLight.castShadow = false;
+scene.add(rimLight);
+
+// Subtle fill light from below (reflected from ground)
+const fillLight = new AmbientLight(0x445566, 0.15);
+scene.add(fillLight);
 
 const groundGeo = new PlaneGeometry(120, 120, 40, 40);
 groundGeo.rotateX(-Math.PI / 2);
@@ -73,10 +87,13 @@ function buildStars(count = 450) {
 
 buildStars();
 
+// Initialize quality setting
+let quality = 'High';
+
 // Initialize cinematic systems
 const timeline = new TimelineDriver(TIMELINE_DURATION_MS);
 const cameraRig = new CameraRig(camera);
-const asteroid = new Asteroid();
+const asteroid = new Asteroid(quality);
 asteroid.addToScene(scene);
 
 const overlay = document.createElement('div');
@@ -91,7 +108,6 @@ playButton.textContent = 'Play / Restart';
 controls.appendChild(playButton);
 
 const qualityButton = document.createElement('button');
-let quality = 'High';
 qualityButton.textContent = `Quality: ${quality}`;
 controls.appendChild(qualityButton);
 
@@ -118,6 +134,18 @@ playButton.addEventListener('click', () => {
 qualityButton.addEventListener('click', () => {
   quality = quality === 'High' ? 'Low' : 'High';
   qualityButton.textContent = `Quality: ${quality}`;
+
+  // Update asteroid quality
+  asteroid.setQuality(quality);
+
+  // Update renderer settings based on quality
+  if (quality === 'Low') {
+    renderer.setPixelRatio(1);
+    renderer.shadowMap.enabled = false;
+  } else {
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+  }
 });
 
 window.addEventListener('resize', () => {
