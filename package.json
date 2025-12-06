@@ -1,0 +1,10 @@
+{
+  "name": "asteroid-impact",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js",
+    "test": "node -e \"console.log('No automated tests; static build ready.')\""
+  }
+}
