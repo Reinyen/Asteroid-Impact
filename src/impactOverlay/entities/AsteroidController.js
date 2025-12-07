@@ -128,6 +128,16 @@ export function createAsteroidController(scene, camera, cfg = {}) {
   const material = createAsteroidMaterial(scene, config);
   asteroidMesh.material = material;
 
+  // Ensure asteroid is visible
+  asteroidMesh.isVisible = true;
+  asteroidMesh.visibility = 1.0;
+
+  console.log('[AsteroidController] Created asteroid at initial position:', {
+    position: asteroidMesh.position,
+    radius: config.mesh.radiusMeters,
+    isVisible: asteroidMesh.isVisible,
+  });
+
   // Initialize kinematics state
   const kinematics = {
     positionWS: Vector3.Zero(),
@@ -262,6 +272,11 @@ function updateController(
   // 8. Run acceptance checks (dev assertions)
   if (checks.enabled) {
     runAcceptanceChecks(checks, kinematics, u);
+  }
+
+  // Debug: Log first few frames
+  if (checks.frameCount < 5 || checks.frameCount % 120 === 0) {
+    console.log(`[AsteroidController] Frame ${checks.frameCount}: u=${u.toFixed(3)} pos=(${asteroidMesh.position.x.toFixed(1)}, ${asteroidMesh.position.y.toFixed(1)}, ${asteroidMesh.position.z.toFixed(1)}) speed=${kinematics.speed.toFixed(1)} heat=${heat01.toFixed(3)}`);
   }
 
   checks.frameCount++;
