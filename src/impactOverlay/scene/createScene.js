@@ -35,8 +35,9 @@ export function createScene(engine, seed = 12345) {
   scene.clearColor = new Color4(0, 0, 0, 0);
 
   // IMPORTANT: Disable autoClear to allow starfield/three.js to show through
+  // BUT keep depth clearing enabled so Babylon objects can render correctly
   scene.autoClear = false;
-  scene.autoClearDepthAndStencil = false;
+  scene.autoClearDepthAndStencil = true;
 
   console.log('✓ Babylon.js scene created with transparent background');
 
