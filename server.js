@@ -51,5 +51,6 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(port, () => {
-  console.log(`Static server running at http://localhost:${port}`);
+  console.log(`✓ Dev server running at http://localhost:${port}`);
+  console.log(`  Press Ctrl+C to stop`);
 });

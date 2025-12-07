@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node server.js",
-    "test": "node -e \"console.log('No automated tests; static build ready.')\""
-  }
+    "test": "node -e \"console.log('✓ No automated tests configured yet. Manual verification required.')\""
+  },
+  "devDependencies": {}
 }

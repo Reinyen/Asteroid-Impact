@@ -7,12 +7,16 @@
     <style>
       :root {
         color-scheme: dark;
-        font-family: "Inter", system-ui, -apple-system, sans-serif;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
       }
-      * { box-sizing: border-box; }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
       body {
         margin: 0;
-        background: #05060a;
+        background: #000;
         overflow: hidden;
       }
       #app {
@@ -20,48 +24,145 @@
         width: 100vw;
         height: 100vh;
       }
-      canvas { display: block; }
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
       .ui-overlay {
         position: absolute;
         inset: 0;
         display: flex;
-        align-items: flex-start;
+        flex-direction: column;
         justify-content: space-between;
         padding: 16px;
         pointer-events: none;
+        font-size: 14px;
+        color: #f0f0f0;
       }
-      .controls {
+      .top-controls {
         display: flex;
         gap: 12px;
+        align-items: flex-start;
+        flex-wrap: wrap;
         pointer-events: auto;
+      }
+      .control-group {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        background: rgba(0, 0, 0, 0.7);
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+      .control-group label {
+        font-size: 12px;
+        color: #aaa;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
       }
       button {
-        background: rgba(255, 255, 255, 0.08);
-        color: #f8fbff;
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        border-radius: 8px;
-        padding: 10px 16px;
+        background: rgba(255, 255, 255, 0.1);
+        color: #f0f0f0;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 6px;
+        padding: 8px 14px;
         cursor: pointer;
-        font-size: 14px;
-        letter-spacing: 0.03em;
-        transition: background 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
-      }
-      button:hover { background: rgba(255, 255, 255, 0.18); border-color: rgba(255, 255, 255, 0.35); }
-      button:active { transform: translateY(1px); }
-      .status {
-        pointer-events: auto;
-        background: rgba(255, 255, 255, 0.05);
-        padding: 10px 14px;
-        border-radius: 8px;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        color: #cdd6f4;
         font-size: 13px;
-        min-width: 200px;
+        letter-spacing: 0.03em;
+        transition: background 0.2s ease, border-color 0.2s ease;
+      }
+      button:hover {
+        background: rgba(255, 255, 255, 0.2);
+        border-color: rgba(255, 255, 255, 0.5);
+      }
+      button:active {
+        transform: translateY(1px);
+      }
+      button.active {
+        background: rgba(100, 200, 255, 0.3);
+        border-color: rgba(100, 200, 255, 0.6);
+      }
+      input[type='number'] {
+        background: rgba(0, 0, 0, 0.5);
+        color: #f0f0f0;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 6px;
+        padding: 6px 10px;
+        font-size: 13px;
+        width: 100px;
+      }
+      input[type='number']:focus {
+        outline: none;
+        border-color: rgba(100, 200, 255, 0.6);
+      }
+      .status-display {
+        pointer-events: none;
+        background: rgba(0, 0, 0, 0.7);
+        padding: 12px 16px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+        line-height: 1.6;
+        align-self: flex-start;
+      }
+      .status-display .status-line {
+        display: flex;
+        gap: 8px;
+      }
+      .status-display .status-label {
+        color: #888;
+        min-width: 80px;
+      }
+      .status-display .status-value {
+        color: #0ff;
+        font-weight: bold;
       }
     </style>
   </head>
   <body>
-    <div id="app"></div>
-    <script type="module" src="./src/main.js"></script>
+    <div id="app">
+      <!-- Three.js canvas will be inserted here -->
+      <div class="ui-overlay">
+        <div class="top-controls">
+          <div class="control-group">
+            <button id="btn-play">Play / Restart</button>
+          </div>
+          <div class="control-group">
+            <label>Quality:</label>
+            <button id="btn-quality">High</button>
+          </div>
+          <div class="control-group">
+            <label>Seed:</label>
+            <input type="number" id="input-seed" value="12345" />
+          </div>
+        </div>
+        <div class="status-display" id="status-display">
+          <div class="status-line">
+            <span class="status-label">State:</span>
+            <span class="status-value" id="status-state">Idle</span>
+          </div>
+          <div class="status-line">
+            <span class="status-label">T:</span>
+            <span class="status-value" id="status-t">0.000</span>
+          </div>
+          <div class="status-line">
+            <span class="status-label">Time:</span>
+            <span class="status-value" id="status-time">0.00s</span>
+          </div>
+          <div class="status-line">
+            <span class="status-label">Phase:</span>
+            <span class="status-value" id="status-phase">Idle</span>
+          </div>
+          <div class="status-line">
+            <span class="status-label">Seed:</span>
+            <span class="status-value" id="status-seed">12345</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
   </body>
 </html>
