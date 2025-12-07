@@ -391,11 +391,13 @@ function createDebrisSystem(scene, emitter, seed) {
  * @param {Object} systems - Particle systems from createParticleSystems
  * @param {number} T - Normalized timeline [0, 1]
  * @param {Vector3} emitterPosition - Current asteroid position
+ * @param {Vector3} impactPosition - Impact center position (for post-impact behavior)
  */
-export function updateParticleSystems(systems, T, emitterPosition) {
+export function updateParticleSystems(systems, T, emitterPosition, impactPosition = null) {
   // Particles start emitting at T=0.3 (mid approach)
   // Increase intensity as asteroid approaches
   const particleStartT = 0.3;
+  const impactT = 0.95;
   const particleIntensity = T < particleStartT ? 0 : (T - particleStartT) / (1.0 - particleStartT);
 
   // Update emission rates based on intensity
@@ -403,15 +405,28 @@ export function updateParticleSystems(systems, T, emitterPosition) {
   const smokeConfig = PARTICLE_CONFIG.smoke;
   const sparkConfig = PARTICLE_CONFIG.sparks;
 
-  systems.fire.emitRate = fireConfig.emitRate * particleIntensity;
-  systems.smoke.emitRate = smokeConfig.emitRate * particleIntensity;
-  systems.sparks.emitRate = sparkConfig.emitRate * particleIntensity;
-
-  // Stop emitting after impact (T > 0.87)
-  if (T > 0.87) {
+  // Pre-impact: normal emission
+  if (T < impactT) {
+    systems.fire.emitRate = fireConfig.emitRate * particleIntensity;
+    systems.smoke.emitRate = smokeConfig.emitRate * particleIntensity;
+    systems.sparks.emitRate = sparkConfig.emitRate * particleIntensity;
+  }
+  // Impact moment: massive burst
+  else if (T >= impactT && T < impactT + 0.02) {
+    systems.fire.emitRate = fireConfig.emitRate * 5.0; // Massive burst
+    systems.smoke.emitRate = smokeConfig.emitRate * 3.0;
+    systems.sparks.emitRate = sparkConfig.emitRate * 10.0;
+  }
+  // Post-impact: settling smoke only
+  else {
     systems.fire.stop();
-    systems.smoke.emitRate = smokeConfig.emitRate * 0.5; // Smoke continues but reduced
+    systems.smoke.emitRate = smokeConfig.emitRate * 0.3; // Gentle settling smoke
     systems.sparks.stop();
+
+    // Update smoke to drift upward (settling behavior)
+    systems.smoke.gravity = new Vector3(0, 3, 0); // Smoke rises slowly
+    systems.smoke.minEmitPower = 1;
+    systems.smoke.maxEmitPower = 3;
   }
 }
 
@@ -421,13 +436,15 @@ export function updateParticleSystems(systems, T, emitterPosition) {
  * @param {number} deltaTime - Time since last update
  * @param {Vector3} emitterPosition - Current asteroid position
  * @param {number} T - Normalized timeline [0, 1]
+ * @param {Vector3} impactPosition - Impact center position (for coalescing)
  */
-export function updateDebrisSystem(debrisSystem, deltaTime, emitterPosition, T) {
+export function updateDebrisSystem(debrisSystem, deltaTime, emitterPosition, T, impactPosition = null) {
   const { particles, matrices, baseMesh, config } = debrisSystem;
 
   // Spawn new debris during entry phase
   const spawnStartT = 0.4;
-  const spawnEndT = 0.87;
+  const spawnEndT = 0.95; // Spawn up to impact
+  const impactT = 0.95;
 
   if (T >= spawnStartT && T < spawnEndT) {
     // Try to spawn debris
@@ -453,6 +470,28 @@ export function updateDebrisSystem(debrisSystem, deltaTime, emitterPosition, T) 
     }
   }
 
+  // Impact moment: spawn burst of debris
+  if (T >= impactT && T < impactT + 0.02) {
+    // Spawn many debris pieces at once
+    for (let burst = 0; burst < 10; burst++) {
+      const inactive = particles.find(p => !p.active);
+      if (inactive) {
+        inactive.position.copyFrom(emitterPosition);
+
+        // High-speed radial explosion
+        const speed = 20 + Math.random() * 30;
+        inactive.velocity = new Vector3(
+          (Math.random() - 0.5) * 2,
+          Math.random(), // Bias upward
+          (Math.random() - 0.5) * 2
+        ).normalize().scale(speed);
+
+        inactive.age = 0;
+        inactive.active = true;
+      }
+    }
+  }
+
   // Update active particles
   for (let i = 0; i < particles.length; i++) {
     const p = particles[i];
@@ -465,6 +504,24 @@ export function updateDebrisSystem(debrisSystem, deltaTime, emitterPosition, T) 
 
     // Update physics
     p.velocity.y -= 9.8 * deltaTime; // Gravity
+
+    // Post-impact: add coalescing force (attraction to impact center)
+    if (T >= impactT && impactPosition) {
+      const toCenter = impactPosition.subtract(p.position);
+      const distance = toCenter.length();
+
+      if (distance > 0.1) {
+        // Attraction force (stronger when closer, weaker when farther)
+        const attractionStrength = 15.0; // Configurable
+        const attractionForce = toCenter.normalize().scale(attractionStrength / Math.max(distance, 1.0));
+        p.velocity.addInPlace(attractionForce.scale(deltaTime));
+      }
+
+      // Add drag to slow down debris over time
+      const dragFactor = 0.98; // 2% velocity loss per frame
+      p.velocity.scaleInPlace(Math.pow(dragFactor, deltaTime * 60));
+    }
+
     p.position.addInPlace(p.velocity.scale(deltaTime));
 
     // Update rotation
