@@ -4,70 +4,16 @@
 
 import {
   AmbientLight,
-  BufferGeometry,
   Color,
   DirectionalLight,
-  Float32BufferAttribute,
   FogExp2,
   Mesh,
   MeshStandardMaterial,
   PlaneGeometry,
-  Points,
-  PointsMaterial,
   Scene,
 } from 'https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js';
 
-import { SeededRNG } from '../utils/rng.js';
 import { SCENE_CONFIG } from '../config/presets.js';
-
-/**
- * Create procedural starfield with realistic appearance
- */
-function createStarfield(rng, starCount) {
-  const positions = [];
-  const colors = [];
-
-  for (let i = 0; i < starCount; i++) {
-    // Full sky dome distribution
-    const radius = rng.range(150, 800);
-    const theta = rng.range(0, Math.PI * 2);
-    const phi = rng.range(0.1, Math.PI * 0.65);
-
-    const x = radius * Math.cos(theta) * Math.sin(phi);
-    const y = radius * Math.cos(phi) + 15;
-    const z = radius * Math.sin(theta) * Math.sin(phi);
-
-    positions.push(x, y, z);
-
-    // Realistic star colors: bright white to subtle blue/yellow tints
-    const temp = rng.range(0, 1);
-    if (temp < 0.7) {
-      // White stars (majority)
-      colors.push(1.0, 1.0, 1.0);
-    } else if (temp < 0.85) {
-      // Blue-white stars
-      colors.push(0.8, 0.9, 1.0);
-    } else {
-      // Yellow-white stars
-      colors.push(1.0, 0.95, 0.8);
-    }
-  }
-
-  const geometry = new BufferGeometry();
-  geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
-  geometry.setAttribute('color', new Float32BufferAttribute(colors, 3));
-
-  const material = new PointsMaterial({
-    size: 8,
-    sizeAttenuation: false,
-    vertexColors: true,
-    transparent: true,
-    opacity: 1.0,
-    blending: 2, // AdditiveBlending for glow
-  });
-
-  return new Points(geometry, material);
-}
 
 /**
  * Create ground plane with clear visibility
@@ -118,17 +64,11 @@ function createLighting() {
  * Initialize scene environment
  */
 export function createEnvironment(seed, quality) {
-  const rng = new SeededRNG(seed);
   const scene = new Scene();
 
-  // Background and fog
-  scene.background = new Color(SCENE_CONFIG.backgroundColor);
+  // Background and fog - using transparent background for HTML starfield
+  scene.background = null; // Transparent to show HTML background
   scene.fog = new FogExp2(SCENE_CONFIG.fogColor, SCENE_CONFIG.fogDensity);
-
-  // Starfield
-  const starCount = quality === 'High' ? 500 : 200;
-  const starfield = createStarfield(rng, starCount);
-  scene.add(starfield);
 
   // Ground
   const groundSegments = quality === 'High' ? 40 : 20;
@@ -141,7 +81,6 @@ export function createEnvironment(seed, quality) {
 
   return {
     scene,
-    starfield,
     ground,
     lights,
   };

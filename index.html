@@ -16,7 +16,11 @@
       }
       body {
         margin: 0;
-        background: #000;
+        background-color: #1B2633;
+        background-image: radial-gradient(circle at bottom, white, transparent 70%);
+        background-repeat: no-repeat;
+        background-position: bottom;
+        background-blend-mode: overlay;
         overflow: hidden;
       }
       #app {
@@ -28,6 +32,10 @@
         display: block;
         width: 100%;
         height: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 1;
       }
       .ui-overlay {
         position: absolute;
@@ -39,6 +47,7 @@
         pointer-events: none;
         font-size: 14px;
         color: #f0f0f0;
+        z-index: 2;
       }
       .top-controls {
         display: flex;
@@ -120,10 +129,66 @@
         color: #0ff;
         font-weight: bold;
       }
+      /* Starfield styles */
+      #starfield-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        pointer-events: none;
+        z-index: 0;
+      }
+      .star {
+        height: 1px;
+        width: 1px;
+        background-color: white;
+        position: absolute;
+      }
+      .star:nth-child(10n) {
+        height: 2px;
+        width: 2px;
+      }
+      .star:nth-child(100n) {
+        height: 3px;
+        width: 3px;
+      }
+      .star:nth-child(5000n) {
+        height: 10px;
+        width: 10px;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+      }
+      @keyframes pulse {
+        0% {
+          box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
+        }
+        70% {
+          box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
+        }
+        100% {
+          box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+        }
+      }
+      /* Twinkling animation */
+      @keyframes twinkle {
+        0%, 100% {
+          opacity: 0.3;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+      .star.twinkle {
+        animation: twinkle 3s infinite;
+      }
     </style>
   </head>
   <body>
     <div id="app">
+      <!-- Starfield container -->
+      <div id="starfield-container"></div>
       <!-- Three.js canvas will be inserted here -->
       <div class="ui-overlay">
         <div class="top-controls">

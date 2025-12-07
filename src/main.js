@@ -9,6 +9,7 @@ import {
 
 import { Timeline } from './core/timeline.js';
 import { createEnvironment } from './world/environment.js';
+import { createStarfield } from './world/starfield.js';
 import { UIOverlay } from './ui/overlay.js';
 import { DEFAULT_SEED, QUALITY_PRESETS } from './config/presets.js';
 
@@ -23,6 +24,7 @@ let ui = null;
 let renderer = null;
 let camera = null;
 let environment = null;
+let starfield = null;
 
 // ============================================================================
 // Initialization
@@ -31,14 +33,16 @@ let environment = null;
 function init() {
   const app = document.getElementById('app');
 
-  // Create renderer
+  // Create renderer with alpha for transparent background
   const qualityPreset = QUALITY_PRESETS[currentQuality];
   renderer = new WebGLRenderer({
     antialias: qualityPreset.antialias,
+    alpha: true,
   });
   renderer.setSize(app.clientWidth, app.clientHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, qualityPreset.pixelRatio));
   renderer.shadowMap.enabled = true;
+  renderer.setClearColor(0x000000, 0); // Transparent clear color
   app.insertBefore(renderer.domElement, app.firstChild);
 
   // Create camera
@@ -54,7 +58,10 @@ function init() {
   // Create timeline
   timeline = new Timeline(currentSeed);
 
-  // Create environment (scene, sky, ground, lights)
+  // Create HTML/CSS starfield
+  starfield = createStarfield(currentSeed);
+
+  // Create environment (scene, ground, lights)
   environment = createEnvironment(currentSeed, currentQuality);
 
   // Create UI overlay
