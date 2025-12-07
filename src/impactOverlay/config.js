@@ -15,14 +15,14 @@ export const OVERLAY_CONFIG = {
 
   // Ground plane settings
   ground: {
-    width: 100,
-    height: 100,
-    subdivisions: 64,
+    width: 30,              // Reduced from 100 to minimize viewport coverage
+    height: 30,             // Reduced from 100
+    subdivisions: 32,       // Reduced subdivisions for smaller area
     material: {
       // PBR base properties
-      albedo: { r: 0.03, g: 0.025, b: 0.02 }, // Very dark soil/rock (nearly black to not dominate view)
+      albedo: { r: 0.01, g: 0.008, b: 0.006 }, // Even darker to reduce prominence
       metallic: 0.0,
-      roughness: 0.85,
+      roughness: 0.95,      // Increased roughness to reduce reflections
       // Procedural texture settings
       normalStrength: 0.5,
       roughnessVariation: 0.3,
@@ -34,15 +34,15 @@ export const OVERLAY_CONFIG = {
     // Primary directional light (moon/sun)
     primary: {
       direction: { x: -0.5, y: -1, z: -0.3 },
-      intensity: 0.6,
+      intensity: 0.4,          // Reduced from 0.6 to darken ground
       color: { r: 0.95, g: 0.95, b: 1.0 }, // Slight blue tint
     },
     // Ambient hemispheric light
     ambient: {
       direction: { x: 0, y: 1, z: 0 },
-      intensity: 0.15,
-      groundColor: { r: 0.05, g: 0.04, b: 0.03 },
-      skyColor: { r: 0.1, g: 0.1, b: 0.15 },
+      intensity: 0.08,         // Reduced from 0.15 to minimize ground visibility
+      groundColor: { r: 0.02, g: 0.015, b: 0.01 }, // Darker ground color
+      skyColor: { r: 0.05, g: 0.05, b: 0.08 },     // Darker sky color
     },
   },
 
