@@ -1,0 +1,11 @@
+{
+  "name": "Asteroid Impact - Three.js Baseline",
+  "description": "Deterministic three.js visualization with timeline control",
+  "hooks": {
+    "stop": {
+      "command": "npm test",
+      "description": "Run tests before allowing stop",
+      "blocking": false
+    }
+  }
+}
