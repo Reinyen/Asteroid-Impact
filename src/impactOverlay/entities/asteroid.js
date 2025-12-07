@@ -9,6 +9,7 @@ import {
   Color3,
   Vector3,
   VertexData,
+  VertexBuffer,
 } from 'https://esm.sh/@babylonjs/core@7';
 import { fbm } from '../proceduralTextures/noise.js';
 
@@ -84,10 +85,23 @@ export function createAsteroid(scene, seed = 0) {
  */
 function applyDisplacement(mesh, seed) {
   const config = ASTEROID_CONFIG;
-  const positions = mesh.getVerticesData(VertexData.PositionKind);
+
+  // Try both VertexBuffer.PositionKind and VertexData.PositionKind for WebGPU compatibility
+  let positions = mesh.getVerticesData(VertexBuffer.PositionKind);
+
+  if (!positions) {
+    // Fallback to VertexData constant
+    positions = mesh.getVerticesData(VertexData.PositionKind);
+  }
 
   if (!positions) {
     console.error('Failed to get vertex positions for displacement');
+    console.error('Mesh info:', {
+      name: mesh.name,
+      hasVertexData: mesh.isVerticesDataPresent(VertexBuffer.PositionKind),
+      totalVertices: mesh.getTotalVertices(),
+      isReady: mesh.isReady(),
+    });
     return;
   }
 
@@ -132,12 +146,13 @@ function applyDisplacement(mesh, seed) {
   }
 
   // Update mesh with displaced vertices
-  mesh.updateVerticesData(VertexData.PositionKind, positions);
+  mesh.updateVerticesData(VertexBuffer.PositionKind, positions);
 
   // Recalculate normals for proper lighting
   const normals = [];
-  VertexData.ComputeNormals(positions, mesh.getIndices(), normals);
-  mesh.updateVerticesData(VertexData.NormalKind, normals);
+  const indices = mesh.getIndices();
+  VertexData.ComputeNormals(positions, indices, normals);
+  mesh.updateVerticesData(VertexBuffer.NormalKind, normals);
 
   console.log('✓ Applied procedural displacement to asteroid vertices');
 }
