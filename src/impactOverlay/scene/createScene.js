@@ -34,9 +34,9 @@ export function createScene(engine, seed = 12345) {
   // Set transparent background (alpha: 0) to allow starfield/three.js to show through
   scene.clearColor = new Color4(0, 0, 0, 0);
 
-  // Disable automatic camera/lighting creation
-  scene.autoClear = true;
-  scene.autoClearDepthAndStencil = true;
+  // IMPORTANT: Disable autoClear to allow starfield/three.js to show through
+  scene.autoClear = false;
+  scene.autoClearDepthAndStencil = false;
 
   console.log('✓ Babylon.js scene created with transparent background');
 
@@ -46,8 +46,8 @@ export function createScene(engine, seed = 12345) {
   // Create lighting
   createLighting(scene);
 
-  // Create ground plane
-  createGround(scene, seed);
+  // Ground plane disabled - not needed for asteroid impact visualization
+  // createGround(scene, seed);
 
   // Setup post-processing
   createPostProcessing(scene);
