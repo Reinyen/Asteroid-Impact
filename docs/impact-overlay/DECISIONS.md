@@ -118,11 +118,11 @@ import { WebGPUEngine } from 'https://cdn.babylonjs.com/webgpuEngine.module.js';
 npm install @babylonjs/core
 ```
 
-**Decision**: Start with **Option B (npm)** for:
-- Version locking
-- TypeScript definitions (if needed later)
-- Easier debugging
-- Can switch to CDN later if bundle size is concern
+**Decision**: **Option A (CDN)** because:
+- No bundler in project - native ES modules require full URLs
+- Matches existing three.js CDN pattern
+- Browser can't resolve bare npm specifiers like `@babylonjs/core/...`
+- Keep npm package for type definitions only (optional)
 
 ### Module Location
 Create new module tree under `/src/`:

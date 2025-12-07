@@ -3,8 +3,7 @@
  * Creates a basic transparent scene for the impact overlay
  */
 
-import { Scene } from '@babylonjs/core/scene.js';
-import { Color4 } from '@babylonjs/core/Maths/math.color.js';
+import { Scene, Color4 } from 'https://cdn.babylonjs.com/babylon.module.js';
 
 /**
  * Create and configure the Babylon.js scene
