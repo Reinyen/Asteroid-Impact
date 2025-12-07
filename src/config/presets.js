@@ -25,9 +25,9 @@ export const TIMELINE_CONFIG = {
 };
 
 export const SCENE_CONFIG = {
-  backgroundColor: 0x0a0e1a, // Slightly lighter for better contrast with ground
-  fogColor: 0x0a0e1a,
-  fogDensity: 0.012, // Reduced fog for better visibility
+  backgroundColor: 0x050a15,
+  fogColor: 0x050a15,
+  fogDensity: 0.008,
 };
 
 export const DEFAULT_SEED = 12345;
