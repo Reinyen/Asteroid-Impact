@@ -43,11 +43,12 @@ const DEFAULT_CONFIG = {
   },
 
   // Trajectory configuration (cubic Bézier control points in world space)
+  // Optimized for dramatic visible descent: starts on-screen, descends to camera in ~4 seconds
   trajectory: {
-    p0: { x: 200, y: 250, z: -400 },  // Far start (beyond fog/visibility)
-    p1: { x: 120, y: 180, z: -220 },  // Control point 1 (shapes arc)
-    p2: { x: 40, y: 60, z: -80 },     // Control point 2 (descent)
-    p3: { x: 0, y: 2, z: 8 },          // Near "impact intercept" (in front of camera)
+    p0: { x: 0, y: 120, z: -30 },     // Start high and visible (centered, far but on-screen)
+    p1: { x: -15, y: 80, z: -5 },     // Arc left, descending
+    p2: { x: 10, y: 30, z: 10 },      // Arc right, close approach
+    p3: { x: 0, y: 5, z: 18 },        // Impact near camera center (just in front)
   },
 
   // Material configuration
@@ -61,18 +62,18 @@ const DEFAULT_CONFIG = {
   heat: {
     heatColor: { r: 1.0, g: 0.5, b: 0.15 },    // Orange-red glow
     emissiveMin: 0.0,
-    emissiveMax: 3.0,
-    speedThresholdMin: 10.0,      // m/s - heating starts
-    speedThresholdMax: 150.0,     // m/s - max heating
-    altitudeThresholdMax: 200.0,  // meters - above this, no heating
-    altitudeThresholdMin: 20.0,   // meters - below this, max heating contribution
+    emissiveMax: 3.5,             // Increased for more dramatic glow
+    speedThresholdMin: 5.0,       // m/s - heating starts (lowered for shorter trajectory)
+    speedThresholdMax: 80.0,      // m/s - max heating (lowered for visible range)
+    altitudeThresholdMax: 120.0,  // meters - above this, no heating (matches start height)
+    altitudeThresholdMin: 10.0,   // meters - below this, max heating contribution
   },
 
   // Plasma sheath configuration
   plasma: {
     enabled: true,
     inflationFactor: 1.15,        // Scale plasma mesh 15% larger than asteroid
-    heatThreshold: 0.2,           // heat01 threshold to show plasma
+    heatThreshold: 0.15,          // heat01 threshold to show plasma (lowered for earlier appearance)
     baseColor: { r: 0.8, g: 0.4, b: 1.0 },  // Purple-ish plasma
     fresnelPower: 3.0,
     turbulenceScale: 2.0,
