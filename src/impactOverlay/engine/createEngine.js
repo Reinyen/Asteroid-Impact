@@ -3,8 +3,8 @@
  * Falls back to WebGL if WebGPU is not supported
  */
 
-import { Engine } from '@babylonjs/core/Engines/engine.js';
-import { WebGPUEngine } from '@babylonjs/core/Engines/webgpuEngine.js';
+import { Engine } from 'https://cdn.babylonjs.com/babylon.module.js';
+import { WebGPUEngine } from 'https://cdn.babylonjs.com/webgpuEngine.module.js';
 
 /**
  * Create a Babylon.js engine with WebGPU support when available
