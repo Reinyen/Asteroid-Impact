@@ -25,27 +25,41 @@ import { SCENE_CONFIG } from '../config/presets.js';
  */
 function createStarfield(rng, starCount) {
   const positions = [];
+  const sizes = [];
+  const colors = [];
 
   for (let i = 0; i < starCount; i++) {
-    // Spherical distribution favoring upper hemisphere
-    const radius = rng.range(80, 300);
+    // Spherical distribution covering full sky dome
+    const radius = rng.range(100, 500);
     const theta = rng.range(0, Math.PI * 2);
-    const phi = rng.range(0, Math.PI * 0.55); // Favor upper hemisphere
+    const phi = rng.range(0, Math.PI * 0.7); // Cover more of the sky
 
     const x = radius * Math.cos(theta) * Math.sin(phi);
-    const y = radius * Math.cos(phi) + 12; // Offset upward
+    const y = Math.abs(radius * Math.cos(phi)) + 5; // Keep above horizon
     const z = radius * Math.sin(theta) * Math.sin(phi);
 
     positions.push(x, y, z);
+
+    // Vary star sizes for realism (most small, some larger)
+    const starSize = rng.next() < 0.9 ? rng.range(2, 4) : rng.range(5, 8);
+    sizes.push(starSize);
+
+    // Slight color variation (bluish-white to warm white)
+    const colorVar = rng.range(0.85, 1.0);
+    colors.push(colorVar, colorVar, 1.0); // R, G, B
   }
 
   const geometry = new BufferGeometry();
   geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('size', new Float32BufferAttribute(sizes, 1));
+  geometry.setAttribute('color', new Float32BufferAttribute(colors, 3));
 
   const material = new PointsMaterial({
-    color: 0xcdd6f4,
-    size: 1.2,
+    size: 3,
     sizeAttenuation: true,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.9,
   });
 
   return new Points(geometry, material);
@@ -55,17 +69,18 @@ function createStarfield(rng, starCount) {
  * Create ground plane
  */
 function createGround(segments) {
-  const geometry = new PlaneGeometry(120, 120, segments, segments);
+  const geometry = new PlaneGeometry(200, 200, segments, segments);
   geometry.rotateX(-Math.PI / 2);
 
   const material = new MeshStandardMaterial({
-    color: 0x0b0d13,
-    roughness: 0.9,
-    metalness: 0.05,
+    color: 0x1a1f2e, // Darker blue-gray, but distinguishable from sky
+    roughness: 0.95,
+    metalness: 0.02,
   });
 
   const ground = new Mesh(geometry, material);
   ground.receiveShadow = true;
+  ground.position.y = -0.1; // Slightly below y=0 for clarity
 
   return ground;
 }
@@ -76,16 +91,20 @@ function createGround(segments) {
 function createLighting() {
   const lights = [];
 
-  // Ambient light (soft fill)
-  const ambient = new AmbientLight(0x8899aa, 0.6);
+  // Ambient light (soft fill) - increased for better ground visibility
+  const ambient = new AmbientLight(0x6688aa, 0.8);
   lights.push(ambient);
 
-  // Moon light (key light)
-  const moonLight = new DirectionalLight(0xbdd3ff, 1.1);
-  moonLight.position.set(-8, 12, 6);
+  // Moon light (key light) - stronger and better positioned
+  const moonLight = new DirectionalLight(0xc8d9ff, 1.5);
+  moonLight.position.set(-10, 20, 8);
   moonLight.castShadow = true;
-  moonLight.shadow.mapSize.width = 1024;
-  moonLight.shadow.mapSize.height = 1024;
+  moonLight.shadow.mapSize.width = 2048;
+  moonLight.shadow.mapSize.height = 2048;
+  moonLight.shadow.camera.left = -50;
+  moonLight.shadow.camera.right = 50;
+  moonLight.shadow.camera.top = 50;
+  moonLight.shadow.camera.bottom = -50;
   lights.push(moonLight);
 
   return lights;
