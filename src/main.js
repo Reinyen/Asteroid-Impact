@@ -151,8 +151,11 @@ function animate() {
   renderer.render(environment.scene, camera);
 
   // Render Babylon.js overlay (if initialized)
-  if (babylonOverlay) {
+  if (babylonOverlay && babylonOverlay.engine) {
+    // Use proper engine frame lifecycle for WebGPU compatibility
+    babylonOverlay.engine.beginFrame();
     babylonOverlay.scene.render();
+    babylonOverlay.engine.endFrame();
   }
 
   // Continue loop
