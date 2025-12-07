@@ -87,7 +87,7 @@ function init() {
 
 async function initBabylonOverlay() {
   try {
-    babylonOverlay = await initImpactOverlay();
+    babylonOverlay = await initImpactOverlay('impact-overlay-canvas', currentSeed);
     console.log('✓ Babylon.js overlay ready');
   } catch (error) {
     console.error('Failed to initialize Babylon.js overlay:', error);
