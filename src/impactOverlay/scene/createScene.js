@@ -19,7 +19,7 @@ import {
 
 import { OVERLAY_CONFIG } from '../config.js';
 import { generateNormalMap, generateRoughnessMap, generateAOMap } from '../proceduralTextures/textureGenerator.js';
-import { createAsteroid, updateAsteroid } from '../entities/asteroidCustom.js';
+import { createAsteroidController } from '../entities/AsteroidController.js';
 import { createParticleSystems, updateParticleSystems, updateDebrisSystem } from '../entities/particleSystems.js';
 
 /**
@@ -52,16 +52,22 @@ export function createScene(engine, seed = 12345) {
   // Setup post-processing
   createPostProcessing(scene);
 
-  // Create asteroid and particle systems
-  const asteroid = createAsteroid(scene, seed);
-  const particleSystems = createParticleSystems(scene, asteroid.mesh, seed);
+  // Create camera reference for controller
+  const camera = scene.activeCamera;
+
+  // Create asteroid controller (Task 8 implementation)
+  const asteroidController = createAsteroidController(scene, camera, { seed });
+
+  // Create particle systems (attach to asteroid mesh)
+  const asteroidMesh = asteroidController.getMesh();
+  const particleSystems = createParticleSystems(scene, asteroidMesh, seed);
 
   // Store entities on scene for animation updates
   scene.metadata = {
-    asteroid,
+    asteroidController,
     particleSystems,
     seed,
-    lastUpdateTime: 0,
+    lastUpdateTime: performance.now() / 1000,
   };
 
   // Register update loop for asteroid and particles
@@ -80,7 +86,7 @@ function updateSceneEntities(scene) {
   const metadata = scene.metadata;
   if (!metadata) return;
 
-  const { asteroid, particleSystems, seed } = metadata;
+  const { asteroidController, particleSystems } = metadata;
 
   // Get timeline state from window (set by main.js)
   const timelineState = window.__timelineState;
@@ -96,14 +102,18 @@ function updateSceneEntities(scene) {
   // Only update if timeline is playing
   if (!isPlaying) return;
 
-  // Update asteroid position, rotation, and heating
-  updateAsteroid(asteroid, T, deltaTime, seed);
+  // Update asteroid controller (Task 8: uses dtMs and tSec)
+  const dtMs = deltaTime * 1000;
+  asteroidController.update(dtMs, T);
+
+  // Get asteroid kinematics for particle systems
+  const kinematics = asteroidController.getKinematics();
 
   // Update particle systems
-  updateParticleSystems(particleSystems, T, asteroid.mesh.position);
+  updateParticleSystems(particleSystems, T, kinematics.positionWS);
 
   // Update debris system
-  updateDebrisSystem(particleSystems.debris, deltaTime, asteroid.mesh.position, T);
+  updateDebrisSystem(particleSystems.debris, deltaTime, kinematics.positionWS, T);
 }
 
 /**
