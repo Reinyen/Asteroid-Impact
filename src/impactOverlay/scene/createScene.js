@@ -19,7 +19,7 @@ import {
 
 import { OVERLAY_CONFIG } from '../config.js';
 import { generateNormalMap, generateRoughnessMap, generateAOMap } from '../proceduralTextures/textureGenerator.js';
-import { createAsteroid, updateAsteroid } from '../entities/asteroid.js';
+import { createAsteroid, updateAsteroid } from '../entities/asteroidCustom.js';
 import { createParticleSystems, updateParticleSystems, updateDebrisSystem } from '../entities/particleSystems.js';
 
 /**
