@@ -107,22 +107,22 @@ Add new overlay between three.js canvas and UI overlay:
 ## 4. Babylon.js Integration Strategy
 
 ### Dependency Management
-**Option A**: CDN imports (matches existing pattern)
+**Option A**: CDN imports via esm.sh
 ```javascript
-import { Engine, Scene } from 'https://cdn.babylonjs.com/babylon.module.js';
-import { WebGPUEngine } from 'https://cdn.babylonjs.com/webgpuEngine.module.js';
+import { Engine, WebGPUEngine, Scene, Color4 } from 'https://esm.sh/@babylonjs/core@7';
 ```
 
-**Option B**: npm packages (better versioning, offline dev)
+**Option B**: npm packages (requires bundler)
 ```bash
 npm install @babylonjs/core
 ```
 
-**Decision**: **Option A (CDN)** because:
+**Decision**: **Option A (esm.sh CDN)** because:
 - No bundler in project - native ES modules require full URLs
-- Matches existing three.js CDN pattern
+- esm.sh resolves npm packages and dependencies for browser usage
 - Browser can't resolve bare npm specifiers like `@babylonjs/core/...`
-- Keep npm package for type definitions only (optional)
+- Alternative CDNs: unpkg.com with ?module, jsdelivr.net with /+esm
+- Keep npm package for type definitions (optional)
 
 ### Module Location
 Create new module tree under `/src/`:
