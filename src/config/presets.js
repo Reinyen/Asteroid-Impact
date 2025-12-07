@@ -20,7 +20,7 @@ export const QUALITY_PRESETS = {
 };
 
 export const TIMELINE_CONFIG = {
-  totalDuration: 22.0, // seconds
+  totalDuration: 5.0, // seconds - asteroid impact sequence (down from 22s for faster action)
   fixedTimeStep: 1 / 60, // 60 FPS fixed timestep for determinism
 };
 

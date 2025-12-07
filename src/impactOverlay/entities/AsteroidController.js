@@ -43,12 +43,12 @@ const DEFAULT_CONFIG = {
   },
 
   // Trajectory configuration (cubic Bézier control points in world space)
-  // Optimized for dramatic visible descent: starts on-screen, descends to camera in ~4 seconds
+  // Optimized for immediate visibility: starts centered on-screen, descends to camera in ~5 seconds
   trajectory: {
-    p0: { x: 0, y: 120, z: -30 },     // Start high and visible (centered, far but on-screen)
-    p1: { x: -15, y: 80, z: -5 },     // Arc left, descending
-    p2: { x: 10, y: 30, z: 10 },      // Arc right, close approach
-    p3: { x: 0, y: 5, z: 18 },        // Impact near camera center (just in front)
+    p0: { x: 0, y: 50, z: -15 },      // Start visible, centered, moderate height
+    p1: { x: -8, y: 35, z: -2 },      // Arc left slightly, descending
+    p2: { x: 6, y: 18, z: 8 },        // Arc right, approaching camera
+    p3: { x: 0, y: 4, z: 17 },        // Impact just in front of camera center
   },
 
   // Material configuration
