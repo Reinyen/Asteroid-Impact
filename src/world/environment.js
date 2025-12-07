@@ -1,5 +1,5 @@
 /**
- * Environment module - Night sky, ground, and lighting
+ * Environment module - Scene and lighting setup
  */
 
 import {
@@ -7,33 +7,10 @@ import {
   Color,
   DirectionalLight,
   FogExp2,
-  Mesh,
-  MeshStandardMaterial,
-  PlaneGeometry,
   Scene,
 } from 'https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js';
 
 import { SCENE_CONFIG } from '../config/presets.js';
-
-/**
- * Create ground plane with clear visibility
- */
-function createGround(segments) {
-  const geometry = new PlaneGeometry(300, 300, segments, segments);
-  geometry.rotateX(-Math.PI / 2);
-
-  const material = new MeshStandardMaterial({
-    color: 0x2a3545,
-    roughness: 0.9,
-    metalness: 0.1,
-  });
-
-  const ground = new Mesh(geometry, material);
-  ground.receiveShadow = true;
-  ground.position.y = 0;
-
-  return ground;
-}
 
 /**
  * Create lighting setup
@@ -70,18 +47,12 @@ export function createEnvironment(seed, quality) {
   scene.background = null; // Transparent to show HTML background
   scene.fog = new FogExp2(SCENE_CONFIG.fogColor, SCENE_CONFIG.fogDensity);
 
-  // Ground
-  const groundSegments = quality === 'High' ? 40 : 20;
-  const ground = createGround(groundSegments);
-  scene.add(ground);
-
   // Lighting
   const lights = createLighting();
   lights.forEach((light) => scene.add(light));
 
   return {
     scene,
-    ground,
     lights,
   };
 }
