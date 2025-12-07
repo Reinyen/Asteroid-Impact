@@ -52,6 +52,7 @@ export function createAsteroid(scene, seed = 0) {
     {
       diameter: config.radius * 2,
       segments: Math.pow(2, config.subdivisions),
+      updatable: true, // Required to modify vertex data
     },
     scene
   );
