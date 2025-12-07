@@ -183,6 +183,21 @@
       .star.twinkle {
         animation: twinkle 3s infinite;
       }
+      /* Babylon.js overlay styles */
+      #impact-overlay-root {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 1;
+      }
+      #impact-overlay-canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
     </style>
   </head>
   <body>
@@ -190,6 +205,10 @@
       <!-- Starfield container -->
       <div id="starfield-container"></div>
       <!-- Three.js canvas will be inserted here -->
+      <!-- Babylon.js overlay canvas -->
+      <div id="impact-overlay-root">
+        <canvas id="impact-overlay-canvas"></canvas>
+      </div>
       <div class="ui-overlay">
         <div class="top-controls">
           <div class="control-group">

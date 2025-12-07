@@ -12,6 +12,7 @@ import { createEnvironment } from './world/environment.js';
 import { createStarfield } from './world/starfield.js';
 import { UIOverlay } from './ui/overlay.js';
 import { DEFAULT_SEED, QUALITY_PRESETS } from './config/presets.js';
+import { initImpactOverlay } from './impactOverlay/index.js';
 
 // ============================================================================
 // Application State
@@ -25,6 +26,7 @@ let renderer = null;
 let camera = null;
 let environment = null;
 let starfield = null;
+let babylonOverlay = null;
 
 // ============================================================================
 // Initialization
@@ -72,12 +74,24 @@ function init() {
     handleSeedChange
   );
 
+  // Initialize Babylon.js overlay (async)
+  initBabylonOverlay();
+
   // Window resize handler
   window.addEventListener('resize', handleResize);
 
   console.log('✓ Application initialized');
   console.log(`  Seed: ${currentSeed}`);
   console.log(`  Quality: ${currentQuality}`);
+}
+
+async function initBabylonOverlay() {
+  try {
+    babylonOverlay = await initImpactOverlay();
+    console.log('✓ Babylon.js overlay ready');
+  } catch (error) {
+    console.error('Failed to initialize Babylon.js overlay:', error);
+  }
 }
 
 // ============================================================================
@@ -129,8 +143,13 @@ function animate() {
   // Update UI
   ui.update();
 
-  // Render scene
+  // Render three.js scene
   renderer.render(environment.scene, camera);
+
+  // Render Babylon.js overlay (if initialized)
+  if (babylonOverlay) {
+    babylonOverlay.scene.render();
+  }
 
   // Continue loop
   requestAnimationFrame(animate);
