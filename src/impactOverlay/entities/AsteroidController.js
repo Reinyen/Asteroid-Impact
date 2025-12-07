@@ -43,12 +43,12 @@ const DEFAULT_CONFIG = {
   },
 
   // Trajectory configuration (cubic Bézier control points in world space)
-  // Optimized for immediate visibility: starts centered on-screen, descends to camera in ~5 seconds
+  // Diagonal descent from top-left to screen center: starts tiny (star-sized), grows as it approaches
   trajectory: {
-    p0: { x: 0, y: 50, z: -15 },      // Start visible, centered, moderate height
-    p1: { x: -8, y: 35, z: -2 },      // Arc left slightly, descending
-    p2: { x: 6, y: 18, z: 8 },        // Arc right, approaching camera
-    p3: { x: 0, y: 4, z: 17 },        // Impact just in front of camera center
+    p0: { x: -150, y: 120, z: -800 },  // Top-left, very far away (appears star-sized)
+    p1: { x: -80, y: 70, z: -400 },    // Control point 1: maintain diagonal descent
+    p2: { x: -30, y: 25, z: -100 },    // Control point 2: final approach angle
+    p3: { x: 0, y: 0, z: 5 },          // Screen center impact, just in front of camera
   },
 
   // Material configuration
@@ -60,7 +60,7 @@ const DEFAULT_CONFIG = {
 
   // Heat/emissive configuration
   heat: {
-    heatColor: { r: 1.0, g: 0.5, b: 0.15 },    // Orange-red glow
+    heatColor: { r: 0.4, g: 0.8, b: 1.0 },    // Cyan/blue glow (purple/teal/blue theme)
     emissiveMin: 0.0,
     emissiveMax: 3.5,             // Increased for more dramatic glow
     speedThresholdMin: 5.0,       // m/s - heating starts (lowered for shorter trajectory)
@@ -74,7 +74,7 @@ const DEFAULT_CONFIG = {
     enabled: true,
     inflationFactor: 1.15,        // Scale plasma mesh 15% larger than asteroid
     heatThreshold: 0.15,          // heat01 threshold to show plasma (lowered for earlier appearance)
-    baseColor: { r: 0.8, g: 0.4, b: 1.0 },  // Purple-ish plasma
+    baseColor: { r: 0.6, g: 0.3, b: 1.0 },  // Purple/violet plasma (purple/teal/blue theme)
     fresnelPower: 3.0,
     turbulenceScale: 2.0,
     turbulenceSpeed: 1.5,
@@ -682,11 +682,11 @@ function createPlasmaShaderMaterial(scene, config) {
       // Combine effects
       float intensity = fresnel * heat01 * (0.5 + 0.5 * turbulence);
 
-      // Color ramp (blue -> purple -> orange as heat increases)
+      // Color ramp (purple/violet -> cyan/teal as heat increases)
       vec3 color = mix(
         baseColor,
-        vec3(1.0, 0.6, 0.2),
-        heat01 * 0.5
+        vec3(0.3, 0.9, 1.0),  // Bright cyan/teal for high heat
+        heat01 * 0.6
       );
 
       // Boost for bloom

@@ -21,6 +21,9 @@ import { OVERLAY_CONFIG } from '../config.js';
 import { generateNormalMap, generateRoughnessMap, generateAOMap } from '../proceduralTextures/textureGenerator.js';
 import { createAsteroidController } from '../entities/AsteroidController.js';
 import { createParticleSystems, updateParticleSystems, updateDebrisSystem } from '../entities/particleSystems.js';
+import { createExplosion } from '../entities/explosion.js';
+import { createShockwave } from '../entities/shockwave.js';
+import { createCameraShake } from '../entities/cameraShake.js';
 
 /**
  * Create and configure the Babylon.js scene
@@ -63,10 +66,25 @@ export function createScene(engine, seed = 12345) {
   const asteroidMesh = asteroidController.getMesh();
   const particleSystems = createParticleSystems(scene, asteroidMesh, seed);
 
+  // Create explosion effect (triggered at impact)
+  const impactPosition = new Vector3(0, 0, 5); // Center of screen, slightly in front of camera
+  const explosion = createExplosion(scene, impactPosition, {});
+
+  // Create shockwave effect (triggered at impact)
+  const shockwave = createShockwave(scene, impactPosition, {});
+
+  // Create camera shake controller
+  const cameraShake = createCameraShake(camera, { intensity: 1.0 });
+
   // Store entities on scene for animation updates
   scene.metadata = {
     asteroidController,
     particleSystems,
+    explosion,
+    shockwave,
+    cameraShake,
+    impactPosition,
+    impactTriggered: false, // Track if impact effects have been triggered
     seed,
     lastUpdateTime: performance.now() / 1000,
   };
@@ -87,7 +105,14 @@ function updateSceneEntities(scene) {
   const metadata = scene.metadata;
   if (!metadata) return;
 
-  const { asteroidController, particleSystems } = metadata;
+  const {
+    asteroidController,
+    particleSystems,
+    explosion,
+    shockwave,
+    cameraShake,
+    impactPosition
+  } = metadata;
 
   // Get timeline state from window (set by main.js)
   const timelineState = window.__timelineState;
@@ -103,6 +128,15 @@ function updateSceneEntities(scene) {
   // Only update if timeline is playing
   if (!isPlaying) return;
 
+  // Impact trigger threshold
+  const impactT = 0.95;
+
+  // Reset impact trigger if timeline restarted (T went back below threshold)
+  if (T < impactT && metadata.impactTriggered) {
+    metadata.impactTriggered = false;
+    console.log('Timeline restarted, reset impact trigger');
+  }
+
   // Update asteroid controller (Task 8: uses dtMs and tSec)
   const dtMs = deltaTime * 1000;
   asteroidController.update(dtMs, T);
@@ -110,11 +144,42 @@ function updateSceneEntities(scene) {
   // Get asteroid kinematics for particle systems
   const kinematics = asteroidController.getKinematics();
 
-  // Update particle systems
-  updateParticleSystems(particleSystems, T, kinematics.positionWS);
+  // Trigger impact effects at T >= 0.95
+  if (T >= impactT && !metadata.impactTriggered) {
+    metadata.impactTriggered = true;
 
-  // Update debris system
-  updateDebrisSystem(particleSystems.debris, deltaTime, kinematics.positionWS, T);
+    // Trigger explosion
+    explosion.trigger(impactPosition);
+
+    // Trigger shockwave
+    shockwave.trigger(impactPosition);
+
+    // Trigger camera shake
+    cameraShake.trigger();
+
+    console.log('💥 IMPACT! All effects triggered at T=' + T.toFixed(3));
+  }
+
+  // Update particle systems (with impact position for coalescing)
+  updateParticleSystems(particleSystems, T, kinematics.positionWS, impactPosition);
+
+  // Update debris system (with coalescing behavior)
+  updateDebrisSystem(particleSystems.debris, deltaTime, kinematics.positionWS, T, impactPosition);
+
+  // Update explosion effect
+  if (explosion.isActive()) {
+    explosion.update(deltaTime);
+  }
+
+  // Update shockwave effect
+  if (shockwave.isActive()) {
+    shockwave.update(deltaTime);
+  }
+
+  // Update camera shake
+  if (cameraShake.isActive()) {
+    cameraShake.update(deltaTime);
+  }
 }
 
 /**
