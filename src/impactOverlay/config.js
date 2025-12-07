@@ -20,7 +20,7 @@ export const OVERLAY_CONFIG = {
     subdivisions: 64,
     material: {
       // PBR base properties
-      albedo: { r: 0.15, g: 0.12, b: 0.1 }, // Dark soil/rock
+      albedo: { r: 0.03, g: 0.025, b: 0.02 }, // Very dark soil/rock (nearly black to not dominate view)
       metallic: 0.0,
       roughness: 0.85,
       // Procedural texture settings
@@ -34,15 +34,15 @@ export const OVERLAY_CONFIG = {
     // Primary directional light (moon/sun)
     primary: {
       direction: { x: -0.5, y: -1, z: -0.3 },
-      intensity: 1.2,
+      intensity: 0.6,
       color: { r: 0.95, g: 0.95, b: 1.0 }, // Slight blue tint
     },
     // Ambient hemispheric light
     ambient: {
       direction: { x: 0, y: 1, z: 0 },
-      intensity: 0.3,
-      groundColor: { r: 0.1, g: 0.08, b: 0.06 },
-      skyColor: { r: 0.2, g: 0.2, b: 0.3 },
+      intensity: 0.15,
+      groundColor: { r: 0.05, g: 0.04, b: 0.03 },
+      skyColor: { r: 0.1, g: 0.1, b: 0.15 },
     },
   },
 

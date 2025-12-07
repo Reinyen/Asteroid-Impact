@@ -32,7 +32,7 @@ export const ASTEROID_CONFIG = {
   heatThreshold: 0.4, // Timeline T when heating starts (40%)
 
   // Trajectory properties
-  startPosition: { x: 150, y: 180, z: -300 }, // Far distance
+  startPosition: { x: 80, y: 120, z: -150 }, // Far distance (closer for better visibility)
   endPosition: { x: 0, y: 2, z: 8 }, // Near camera/ground impact point
 
   // Rotation properties
@@ -253,15 +253,18 @@ function updateRotation(mesh, deltaTime, seed) {
 function updateHeating(material, T) {
   const config = ASTEROID_CONFIG;
 
+  // Base emissive for visibility even when far away
+  const baseEmissive = 0.1;
+
   // Heating starts at threshold and increases to impact
-  let heatIntensity = 0;
+  let heatIntensity = baseEmissive;
 
   if (T >= config.heatThreshold) {
     // Normalize to [0, 1] range after threshold
     const normalizedHeat = (T - config.heatThreshold) / (1.0 - config.heatThreshold);
 
     // Use quadratic curve for rapid heating near impact
-    heatIntensity = normalizedHeat * normalizedHeat;
+    heatIntensity = baseEmissive + normalizedHeat * normalizedHeat;
   }
 
   // Apply emissive color (orange-red glow)
