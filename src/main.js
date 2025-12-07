@@ -143,6 +143,10 @@ function animate() {
   // Update UI
   ui.update();
 
+  // Expose timeline state to Babylon.js scene via window
+  const timelineState = timeline.getState();
+  window.__timelineState = timelineState;
+
   // Render three.js scene
   renderer.render(environment.scene, camera);
 

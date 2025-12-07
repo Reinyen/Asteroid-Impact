@@ -19,6 +19,8 @@ import {
 
 import { OVERLAY_CONFIG } from '../config.js';
 import { generateNormalMap, generateRoughnessMap, generateAOMap } from '../proceduralTextures/textureGenerator.js';
+import { createAsteroid, updateAsteroid } from '../entities/asteroid.js';
+import { createParticleSystems, updateParticleSystems, updateDebrisSystem } from '../entities/particleSystems.js';
 
 /**
  * Create and configure the Babylon.js scene
@@ -50,7 +52,58 @@ export function createScene(engine, seed = 12345) {
   // Setup post-processing
   createPostProcessing(scene);
 
+  // Create asteroid and particle systems
+  const asteroid = createAsteroid(scene, seed);
+  const particleSystems = createParticleSystems(scene, asteroid.mesh, seed);
+
+  // Store entities on scene for animation updates
+  scene.metadata = {
+    asteroid,
+    particleSystems,
+    seed,
+    lastUpdateTime: 0,
+  };
+
+  // Register update loop for asteroid and particles
+  scene.onBeforeRenderObservable.add(() => {
+    updateSceneEntities(scene);
+  });
+
   return scene;
+}
+
+/**
+ * Update asteroid and particle systems based on timeline
+ * Called every frame by scene.onBeforeRenderObservable
+ */
+function updateSceneEntities(scene) {
+  const metadata = scene.metadata;
+  if (!metadata) return;
+
+  const { asteroid, particleSystems, seed } = metadata;
+
+  // Get timeline state from window (set by main.js)
+  const timelineState = window.__timelineState;
+  if (!timelineState) return;
+
+  const { T, isPlaying } = timelineState;
+
+  // Calculate delta time
+  const currentTime = performance.now() / 1000;
+  const deltaTime = currentTime - metadata.lastUpdateTime;
+  metadata.lastUpdateTime = currentTime;
+
+  // Only update if timeline is playing
+  if (!isPlaying) return;
+
+  // Update asteroid position, rotation, and heating
+  updateAsteroid(asteroid, T, deltaTime, seed);
+
+  // Update particle systems
+  updateParticleSystems(particleSystems, T, asteroid.mesh.position);
+
+  // Update debris system
+  updateDebrisSystem(particleSystems.debris, deltaTime, asteroid.mesh.position, T);
 }
 
 /**
