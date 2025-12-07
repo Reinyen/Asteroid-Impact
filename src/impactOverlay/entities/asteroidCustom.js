@@ -1,15 +1,14 @@
 /**
- * Asteroid Entity
- * Procedurally generated asteroid with atmospheric entry heating
+ * Asteroid Entity - Custom Vertex Data Approach
+ * WebGPU-compatible implementation using custom vertex data
  */
 
 import {
-  MeshBuilder,
+  Mesh,
   StandardMaterial,
   Color3,
   Vector3,
   VertexData,
-  VertexBuffer,
 } from 'https://esm.sh/@babylonjs/core@7';
 import { fbm } from '../proceduralTextures/noise.js';
 
@@ -19,7 +18,7 @@ import { fbm } from '../proceduralTextures/noise.js';
 export const ASTEROID_CONFIG = {
   // Base mesh properties
   radius: 30,
-  subdivisions: 4, // Icosphere detail level (4 = ~2560 triangles)
+  subdivisions: 32, // Reduced for performance (32x32 = 1024 quads = 2048 triangles)
   displacementScale: 3.5,
   displacementOctaves: 5,
 
@@ -42,119 +41,127 @@ export const ASTEROID_CONFIG = {
 };
 
 /**
- * Create procedural asteroid mesh with displacement
+ * Create procedural asteroid mesh using custom vertex data
+ * This approach is WebGPU-compatible as it builds vertex data before mesh creation
  */
 export function createAsteroid(scene, seed = 0) {
   const config = ASTEROID_CONFIG;
 
-  // Create icosphere base mesh
-  const sphere = MeshBuilder.CreateSphere(
-    'asteroid',
-    {
-      diameter: config.radius * 2,
-      segments: Math.pow(2, config.subdivisions),
-      updatable: true, // Required to modify vertex data
-    },
-    scene
-  );
+  // Generate custom vertex data with displacement
+  const vertexData = createDisplacedSphereData(config.radius, config.subdivisions, seed);
 
-  // Apply procedural displacement to vertices
-  applyDisplacement(sphere, seed);
+  // Create mesh from custom vertex data
+  const asteroid = new Mesh('asteroid', scene);
+  vertexData.applyToMesh(asteroid);
 
   // Create material with heat/emissive capability
   const material = createAsteroidMaterial(scene);
-  sphere.material = material;
+  asteroid.material = material;
 
   // Set initial position (far away)
-  sphere.position = new Vector3(
+  asteroid.position = new Vector3(
     config.startPosition.x,
     config.startPosition.y,
     config.startPosition.z
   );
 
-  console.log('✓ Asteroid mesh created with procedural displacement');
+  console.log('✓ Asteroid mesh created with custom vertex data (WebGPU-compatible)');
 
   return {
-    mesh: sphere,
+    mesh: asteroid,
     material: material,
   };
 }
 
 /**
- * Apply procedural displacement to mesh vertices
+ * Create displaced sphere vertex data from scratch
+ * WebGPU-compatible: builds all data before GPU upload
  */
-function applyDisplacement(mesh, seed) {
+function createDisplacedSphereData(radius, subdivisions, seed) {
   const config = ASTEROID_CONFIG;
-
-  // Try both VertexBuffer.PositionKind and VertexData.PositionKind for WebGPU compatibility
-  let positions = mesh.getVerticesData(VertexBuffer.PositionKind);
-
-  if (!positions) {
-    // Fallback to VertexData constant
-    positions = mesh.getVerticesData(VertexData.PositionKind);
-  }
-
-  if (!positions) {
-    console.error('Failed to get vertex positions for displacement');
-    console.error('Mesh info:', {
-      name: mesh.name,
-      hasVertexData: mesh.isVerticesDataPresent(VertexBuffer.PositionKind),
-      totalVertices: mesh.getTotalVertices(),
-      isReady: mesh.isReady(),
-    });
-    return;
-  }
-
-  // Displace each vertex along its normal
-  for (let i = 0; i < positions.length; i += 3) {
-    const x = positions[i];
-    const y = positions[i + 1];
-    const z = positions[i + 2];
-
-    // Normalize to get direction
-    const length = Math.sqrt(x * x + y * y + z * z);
-    const nx = x / length;
-    const ny = y / length;
-    const nz = z / length;
-
-    // Sample 3D noise using spherical coordinates
-    // Use position on unit sphere as texture coordinate
-    const noiseValue = fbm(
-      nx * 2.0,
-      ny * 2.0,
-      config.displacementOctaves,
-      0.5,
-      3.0,
-      seed
-    ) + fbm(
-      nz * 2.0,
-      nx * 2.0,
-      config.displacementOctaves - 1,
-      0.4,
-      2.0,
-      seed + 1
-    ) * 0.5;
-
-    // Scale displacement (0.5-1.5 range)
-    const displacement = 0.5 + noiseValue;
-    const displacementAmount = displacement * config.displacementScale;
-
-    // Apply displacement along normal
-    positions[i] = nx * (length + displacementAmount);
-    positions[i + 1] = ny * (length + displacementAmount);
-    positions[i + 2] = nz * (length + displacementAmount);
-  }
-
-  // Update mesh with displaced vertices
-  mesh.updateVerticesData(VertexBuffer.PositionKind, positions);
-
-  // Recalculate normals for proper lighting
+  const positions = [];
+  const indices = [];
   const normals = [];
-  const indices = mesh.getIndices();
-  VertexData.ComputeNormals(positions, indices, normals);
-  mesh.updateVerticesData(VertexBuffer.NormalKind, normals);
+  const uvs = [];
 
-  console.log('✓ Applied procedural displacement to asteroid vertices');
+  // Generate UV sphere with displacement
+  for (let lat = 0; lat <= subdivisions; lat++) {
+    const theta = (lat * Math.PI) / subdivisions;
+    const sinTheta = Math.sin(theta);
+    const cosTheta = Math.cos(theta);
+
+    for (let lon = 0; lon <= subdivisions; lon++) {
+      const phi = (lon * 2 * Math.PI) / subdivisions;
+      const sinPhi = Math.sin(phi);
+      const cosPhi = Math.cos(phi);
+
+      // Base sphere position (normalized)
+      const nx = cosPhi * sinTheta;
+      const ny = cosTheta;
+      const nz = sinPhi * sinTheta;
+
+      // Sample noise for displacement
+      const noiseValue = fbm(
+        nx * 2.0,
+        ny * 2.0,
+        config.displacementOctaves,
+        0.5,
+        3.0,
+        seed
+      ) + fbm(
+        nz * 2.0,
+        nx * 2.0,
+        config.displacementOctaves - 1,
+        0.4,
+        2.0,
+        seed + 1
+      ) * 0.5;
+
+      // Calculate displacement (0.5-1.5 range)
+      const displacement = 0.5 + noiseValue;
+      const displacedRadius = radius + displacement * config.displacementScale;
+
+      // Final vertex position
+      positions.push(
+        nx * displacedRadius,
+        ny * displacedRadius,
+        nz * displacedRadius
+      );
+
+      // UVs
+      uvs.push(lon / subdivisions, 1 - lat / subdivisions);
+
+      // Normals (will be recalculated for accuracy)
+      normals.push(nx, ny, nz);
+    }
+  }
+
+  // Generate indices
+  for (let lat = 0; lat < subdivisions; lat++) {
+    for (let lon = 0; lon < subdivisions; lon++) {
+      const first = lat * (subdivisions + 1) + lon;
+      const second = first + subdivisions + 1;
+
+      // Two triangles per quad
+      indices.push(first, second, first + 1);
+      indices.push(second, second + 1, first + 1);
+    }
+  }
+
+  // Create VertexData object
+  const vertexData = new VertexData();
+  vertexData.positions = positions;
+  vertexData.indices = indices;
+  vertexData.uvs = uvs;
+
+  // Compute accurate normals based on displaced geometry
+  const computedNormals = [];
+  VertexData.ComputeNormals(positions, indices, computedNormals);
+  vertexData.normals = computedNormals;
+
+  console.log(`✓ Generated displaced sphere: ${positions.length / 3} vertices, ${indices.length / 3} triangles`);
+
+  return vertexData;
 }
 
 /**
